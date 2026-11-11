@@ -1,0 +1,158 @@
+{
+  "name": "05 · Public Pages (Privacy, Terms, TikTok verification)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🌐 Public pages served by n8n\nActivate this workflow, then these URLs work:\n- `https://<n8n>/webhook/privacy`\n- `https://<n8n>/webhook/terms`\n- `https://<n8n>/webhook/<TIKTOK_VERIFY_FILENAME>`\n\nIn the TikTok portal verify the URL prefix `https://<n8n>/webhook/` with the signature file: paste its name and content into **Config**.",
+        "width": 900,
+        "height": 200
+      },
+      "id": "679bc769-b929-4505-9ed9-797e0f70e7b4",
+      "name": "Note 0--160",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "path": ":page",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "c329f93e-b909-435c-8392-05642646a682",
+      "name": "Page Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "6cb3cabc-e5b8-4c84-ba4f-54a460345597"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d7bd1859-d001-418f-9493-5dea3aa601c1",
+              "name": "TIKTOK_VERIFY_FILENAME",
+              "type": "string",
+              "value": "tiktokXXXXXXXX.txt"
+            },
+            {
+              "id": "f5509d71-0f25-4fae-b370-78c4d53a6444",
+              "name": "TIKTOK_VERIFY_CONTENT",
+              "type": "string",
+              "value": "tiktok-developers-site-verification=REPLACE_ME"
+            },
+            {
+              "id": "e137c57b-ce22-42e8-85fe-c5bd8173d29c",
+              "name": "PRIVACY_HTML",
+              "type": "string",
+              "value": "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>Privacy Policy – Fitness Factory</title></head>\n<body style=\"font-family:sans-serif;max-width:720px;margin:40px auto;padding:0 16px\">\n<h1>Privacy Policy</h1><p>Last updated: 2026-11-11</p>\n<p>Fitness Factory is a personal automation tool operated by Morvalo. It publishes fitness videos to the operator's own TikTok account only.</p>\n<h2>Data we access</h2><p>Through the TikTok API we access only the operator's own account: basic profile information and the ability to upload and publish videos.</p>\n<h2>Data we store</h2><p>OAuth tokens are stored privately by the operator to keep the integration working. No data about other TikTok users is collected, stored, or shared.</p>\n<h2>Third parties</h2><p>We do not sell or share any data with third parties.</p>\n<h2>Contact</h2><p>Questions: open an issue at <a href=\"https://github.com/Morvalo/fitness-factory-legal\">github.com/Morvalo/fitness-factory-legal</a>.</p>\n</body></html>\n"
+            },
+            {
+              "id": "948602c6-52ba-471a-9f9a-37789425185a",
+              "name": "TERMS_HTML",
+              "type": "string",
+              "value": "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>Terms of Service – Fitness Factory</title></head>\n<body style=\"font-family:sans-serif;max-width:720px;margin:40px auto;padding:0 16px\">\n<h1>Terms of Service</h1><p>Last updated: 2026-11-11</p>\n<p>Fitness Factory is a private automation tool used by its operator (Morvalo) to create and publish fitness education videos to the operator's own TikTok account.</p>\n<p>The tool is not offered to the public. Use of the published content is subject to TikTok's own Terms of Service.</p>\n<p>Content is educational and does not constitute medical advice.</p>\n<p>Contact: <a href=\"https://github.com/Morvalo/fitness-factory-legal\">github.com/Morvalo/fitness-factory-legal</a>.</p>\n</body></html>\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c3c13426-fd51-46aa-98d7-983c87596bc6",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $json;\nconst page = String($('Page Request').first().json.params.page || '');\nlet body = 'Not found', type = 'text/plain; charset=utf-8', status = 404;\nif (page === 'privacy') { body = cfg.PRIVACY_HTML; type = 'text/html; charset=utf-8'; status = 200; }\nelse if (page === 'terms') { body = cfg.TERMS_HTML; type = 'text/html; charset=utf-8'; status = 200; }\nelse if (page === cfg.TIKTOK_VERIFY_FILENAME) { body = cfg.TIKTOK_VERIFY_CONTENT; status = 200; }\nreturn [{ json: { body, type, status } }];"
+      },
+      "id": "126c5ee7-7ced-41a8-9be4-a785b6804d2a",
+      "name": "Pick Page",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.body }}",
+        "options": {
+          "responseCode": "={{ $json.status }}",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "={{ $json.type }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "1d92dfa2-cb18-4b75-a9fb-28fca77574f2",
+      "name": "Respond Page",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        720,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Page Request": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Pick Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick Page": {
+      "main": [
+        [
+          {
+            "node": "Respond Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
