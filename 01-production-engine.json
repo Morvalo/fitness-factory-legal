@@ -1,0 +1,1909 @@
+{
+  "name": "01 · Production Engine (Agents 2-7 + render)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## ⚙️ Production Engine (sub-workflow)\nInput item: `{ selected_idea: {number,title,concept,target_muscle}, notes }`\nOutput item: `{ video_title, final_video_url, shots[], voice_over, caption, hashtags, full_package }`\n\nCalled by **02 Manual Run** and **04 Auto Publisher**.",
+        "width": 1100,
+        "height": 180
+      },
+      "id": "cb487b18-2bd9-42ca-921e-dc1606c54ff3",
+      "name": "Note 0--60",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "f17f8a99-b989-4485-8c03-ee32f8528fc6",
+      "name": "When called by another workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8fe5b0aa-b25f-424e-9409-d516a52c7d3f",
+              "name": "IMAGE_ENDPOINT",
+              "type": "string",
+              "value": "https://queue.fal.run/fal-ai/flux-pro/v1.1"
+            },
+            {
+              "id": "227f9a0c-9d2d-456b-81d0-a4ec5e847c6d",
+              "name": "VIDEO_ENDPOINT",
+              "type": "string",
+              "value": "https://queue.fal.run/fal-ai/kling-video/v2.1/pro/image-to-video"
+            },
+            {
+              "id": "8616bc14-9b90-48a4-b24f-9cc2e0da769f",
+              "name": "TTS_VOICE_ID",
+              "type": "string",
+              "value": "pNInz6obpgDQGcFmaJgB"
+            },
+            {
+              "id": "cad71fe6-b4e4-422e-b1b2-7cfa4110d889",
+              "name": "TTS_MODEL",
+              "type": "string",
+              "value": "eleven_multilingual_v2"
+            },
+            {
+              "id": "2606a335-039b-4fc4-b9a2-6b68e2ad9e6f",
+              "name": "COMPOSE_ENDPOINT",
+              "type": "string",
+              "value": "https://queue.fal.run/fal-ai/ffmpeg-api/compose"
+            },
+            {
+              "id": "cc7696e8-14ba-40e9-b66a-6169592a4503",
+              "name": "FAL_UPLOAD_INITIATE",
+              "type": "string",
+              "value": "https://rest.alpha.fal.ai/storage/upload/initiate?storage_type=fal-cdn-v3"
+            },
+            {
+              "id": "14966de8-f708-4df9-b0e9-09da1b78050f",
+              "name": "selected_idea",
+              "type": "object",
+              "value": "={{ $json.selected_idea }}"
+            },
+            {
+              "id": "b6447599-12ef-4003-a9b1-8172f3763d2e",
+              "name": "notes",
+              "type": "string",
+              "value": "={{ $json.notes || '' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "69c4f05f-aa6d-48a4-a6ed-de010739da2a",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c9ab00f8-db37-43b4-9c3d-16d8f2780740",
+              "name": "selected_idea",
+              "type": "object",
+              "value": "={{ $json.selected_idea }}"
+            },
+            {
+              "id": "8c62a8df-cecd-46f2-a125-e66de435fc23",
+              "name": "notes",
+              "type": "string",
+              "value": "={{ $json.notes }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e7ff0dfc-defc-406a-955c-c80246d9f4e6",
+      "name": "Resolve Selection",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=SELECTED VIDEO IDEA:\n{{ JSON.stringify($json.selected_idea, null, 2) }}\n\nUSER NOTES: {{ $json.notes }}\n\nProduce the anatomy & form brief.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are AGENT 2 — ANATOMY & EXERCISE-FORM EXPERT of a fitness short-form video production team.\n\nRole: an exercise physiologist and anatomy expert. You receive one selected video idea and are responsible for getting the anatomy and biomechanics 100% correct before any visuals are designed.\n\nFor the selected idea:\n1. Identify the PRIMARY target muscle (exact anatomical name) and describe its precise location on the body in plain language usable by an image generator (e.g. \"the front/anterior portion of the shoulder cap, from the collarbone down to the upper arm\").\n2. Identify SECONDARY muscles (0–3) with their locations. Clearly distinguish them from the primary.\n3. If the topic concerns a specific muscle head, explain exactly how that head differs in location from the other heads and which must NOT be highlighted as primary.\n4. Choose the 1–3 exercises (or the mistake/comparison) that best serve the topic. For each: equipment, starting position, movement path, joint actions, range of motion, tempo, common mistakes, and cues for correct form.\n5. Choose the highlight colors: primary (default vivid orange-red) and secondary (dimmer amber) unless the concept calls for a different premium medical-fitness color (e.g. a mistake shot may use a red warning highlight on the wrongly loaded muscle/joint).\n6. Describe what the muscle visibly does during the movement (shortens/contracts on the concentric, lengthens on the eccentric) so the highlight can pulse/intensify at the right moment.\n\nRules:\n- Never pick the wrong muscle. Double-check agonist vs. synergist vs. stabilizer.\n- All movements must be mechanically believable for a real human.\n- Be concise but specific. Output ONLY valid JSON matching the required schema.",
+          "maxIterations": 3
+        }
+      },
+      "id": "ab14dde0-de1d-4c40-bbae-af1161060674",
+      "name": "Agent 2 · Anatomy Expert",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        720,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1",
+          "cachedResultName": "gpt-4.1"
+        },
+        "options": {
+          "temperature": 0.2,
+          "responseFormat": "json_object"
+        }
+      },
+      "id": "2ce4be6a-91b4-4027-a663-331c1b1b6888",
+      "name": "OpenAI Model 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        660,
+        520
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "REPLACE_WITH_OPENAI_CREDENTIAL_ID",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"topic\": {\n      \"type\": \"string\"\n    },\n    \"primary_muscle\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"name\": {\n          \"type\": \"string\"\n        },\n        \"location_description\": {\n          \"type\": \"string\"\n        },\n        \"highlight_color\": {\n          \"type\": \"string\"\n        }\n      },\n      \"required\": [\n        \"name\",\n        \"location_description\",\n        \"highlight_color\"\n      ]\n    },\n    \"secondary_muscles\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"name\": {\n            \"type\": \"string\"\n          },\n          \"location_description\": {\n            \"type\": \"string\"\n          },\n          \"highlight_color\": {\n            \"type\": \"string\"\n          }\n        }\n      }\n    },\n    \"muscle_head_notes\": {\n      \"type\": \"string\"\n    },\n    \"exercises\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"name\": {\n            \"type\": \"string\"\n          },\n          \"equipment\": {\n            \"type\": \"string\"\n          },\n          \"start_position\": {\n            \"type\": \"string\"\n          },\n          \"movement\": {\n            \"type\": \"string\"\n          },\n          \"joint_actions\": {\n            \"type\": \"string\"\n          },\n          \"range_of_motion\": {\n            \"type\": \"string\"\n          },\n          \"tempo\": {\n            \"type\": \"string\"\n          },\n          \"common_mistakes\": {\n            \"type\": \"string\"\n          },\n          \"form_cues\": {\n            \"type\": \"string\"\n          }\n        }\n      }\n    },\n    \"contraction_behavior\": {\n      \"type\": \"string\"\n    }\n  },\n  \"required\": [\n    \"topic\",\n    \"primary_muscle\",\n    \"secondary_muscles\",\n    \"exercises\",\n    \"contraction_behavior\"\n  ]\n}",
+        "autoFix": false
+      },
+      "id": "d1d38d0f-6e38-4e6e-8746-8b63ae5a113c",
+      "name": "Output Parser 2",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        860,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=SELECTED VIDEO IDEA:\n{{ JSON.stringify($('Resolve Selection').item.json.selected_idea, null, 2) }}\n\nANATOMY BRIEF:\n{{ JSON.stringify($json.output, null, 2) }}\n\nDesign the 3-shot storyboard.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are AGENT 3 — 3D ANATOMICAL VISUALIZATION DIRECTOR of a fitness short-form video production team.\n\nRole: you design the 3-shot visual storyboard for a 20–40 second vertical (9:16) video, using the anatomy brief from the Anatomy Expert.\n\nShot structure (fixed):\n- SHOT 1 (2–4 s): Introduction / setup / first exercise position. Do not reveal the whole result if the topic benefits from progression.\n- SHOT 2 (4–6 s): Main movement / exercise demonstration / muscle activation.\n- SHOT 3 (4–6 s): Final movement / comparison / key takeaway / result.\n\nFor each shot define:\n- purpose (what the viewer must understand from this shot)\n- exercise shown\n- full body pose: torso, head direction (faceless head still has orientation), arms (shoulder/elbow/wrist angles, grip), legs (stance, knee angle, foot position), spine position\n- equipment and exactly where it is relative to the body\n- camera angle (choose from: front view, side view, three-quarter front, three-quarter side, slight low angle, slight elevated angle, close-up anatomy shot) — pick the angle that makes THIS exercise easiest to understand; do NOT force the same angle for all three shots\n- camera distance (full body / medium / close-up) and camera motion for the video — ALWAYS \"static locked camera\" (the AI video model deforms limbs when the camera moves; the motion comes from the body only)\n- movement description for the video: ONE half-repetition only — start pose → movement direction → end pose, slow and controlled (the whole clip is one smooth 4–5 s movement, no back-and-forth reps), what the highlighted muscle does (contracts / intensifies glow on the concentric)\n- end_pose: the exact full-body pose at the END of the shot (torso, arms, legs, equipment position) — it must differ from the start pose ONLY in the joints that move in this exercise; feet placement, camera, environment and lighting are identical\n- highlight: primary muscle region and intensity, secondary muscles if any\n- duration in seconds (integer; shot 1: 2–4, shots 2–3: 4–6)\n- continuity note: how this shot flows naturally from the previous one (same character, same environment, same lighting; the pose at the end of the previous shot leads into this one)\n\nRules:\n- The three shots must tell ONE continuous story that explains the topic from beginning to end — not three unrelated images.\n- Character, proportions, material, shorts, environment, lighting and rendering style are identical in all shots.\n- Keep movements clear and simple enough for AI image-to-video generation: one primary motion per shot, ONE half-rep (e.g. bottom → top of a squat), small-to-medium range of motion, no jumps, no rotations of the whole body, no walking, no complex multi-step choreography.\n- Avoid motions where limbs cross in front of the body or occlude each other heavily (they deform in AI video); prefer side or three-quarter angles that keep every limb visible.\n- Output ONLY valid JSON matching the required schema.",
+          "maxIterations": 3
+        }
+      },
+      "id": "832f4299-a1fd-4412-b9ef-0d46ff01a1b0",
+      "name": "Agent 3 · Shot Director",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        1120,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1",
+          "cachedResultName": "gpt-4.1"
+        },
+        "options": {
+          "temperature": 0.5,
+          "responseFormat": "json_object"
+        }
+      },
+      "id": "9642dacd-9a71-427e-bb54-bab8b698a5c6",
+      "name": "OpenAI Model 3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1060,
+        520
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "REPLACE_WITH_OPENAI_CREDENTIAL_ID",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"shots\": {\n      \"type\": \"array\",\n      \"minItems\": 3,\n      \"maxItems\": 3,\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"shot_number\": {\n            \"type\": \"integer\"\n          },\n          \"purpose\": {\n            \"type\": \"string\"\n          },\n          \"exercise\": {\n            \"type\": \"string\"\n          },\n          \"pose\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"torso\": {\n                \"type\": \"string\"\n              },\n              \"head\": {\n                \"type\": \"string\"\n              },\n              \"arms\": {\n                \"type\": \"string\"\n              },\n              \"legs\": {\n                \"type\": \"string\"\n              },\n              \"spine\": {\n                \"type\": \"string\"\n              }\n            }\n          },\n          \"equipment\": {\n            \"type\": \"string\"\n          },\n          \"camera_angle\": {\n            \"type\": \"string\"\n          },\n          \"camera_distance\": {\n            \"type\": \"string\"\n          },\n          \"camera_motion\": {\n            \"type\": \"string\"\n          },\n          \"movement\": {\n            \"type\": \"string\"\n          },\n          \"highlight\": {\n            \"type\": \"string\"\n          },\n          \"end_pose\": {\n            \"type\": \"string\"\n          },\n          \"duration_seconds\": {\n            \"type\": \"integer\"\n          },\n          \"continuity\": {\n            \"type\": \"string\"\n          }\n        },\n        \"required\": [\n          \"shot_number\",\n          \"purpose\",\n          \"exercise\",\n          \"pose\",\n          \"equipment\",\n          \"camera_angle\",\n          \"camera_distance\",\n          \"camera_motion\",\n          \"movement\",\n          \"end_pose\",\n          \"highlight\",\n          \"duration_seconds\"\n        ]\n      }\n    }\n  },\n  \"required\": [\n    \"shots\"\n  ]\n}",
+        "autoFix": false
+      },
+      "id": "4a57f0c0-ccc0-4c23-b38b-7ecf79317834",
+      "name": "Output Parser 3",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        1260,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=ANATOMY BRIEF:\n{{ JSON.stringify($('Agent 2 · Anatomy Expert').item.json.output, null, 2) }}\n\nSTORYBOARD:\n{{ JSON.stringify($json.output, null, 2) }}\n\nWrite the 3 standalone image prompts.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are AGENT 4 — AI IMAGE PROMPT ENGINEER of a fitness short-form video production team.\n\nRole: convert the Shot Director's storyboard into 3 pairs of detailed, STANDALONE, copy-pasteable text-to-image prompts for photorealistic 3D rendering models (Flux / Imagen / gpt-image / Midjourney style). For EACH shot you write:\n- `prompt`  = the START frame (the storyboard's start pose)\n- `end_prompt` = the END frame (the storyboard's end_pose)\nThe two prompts of a shot are used as first and last frame of a video clip, so they must be IDENTICAL word-for-word in character, material, shorts, equipment type/color, environment, lighting, camera angle, camera distance, framing and highlight — and differ ONLY in the sentences describing the joint positions that move (e.g. knee angle, elbow angle, bar height). Keep the paragraph order identical in both.\n\nEach image prompt MUST explicitly contain, in natural flowing prose (not bullet points):\n1. The CORE VISUAL STYLE block (given below) — character, material, shorts, environment, lighting, rendering style, 9:16 vertical.\n2. Exact exercise and exact character pose: body position, torso angle, arm position (shoulder, elbow, hands/grip), leg position (stance, knees, feet), head orientation.\n3. Equipment: type, size, color (black/dark matte), exact position relative to the body. No floating equipment.\n4. Camera angle and camera distance.\n5. Target muscle and the exact highlight location on the body, with the color and glow intensity; secondary muscles if any with a dimmer glow; everything else matte white.\n6. Composition notes: character centered, full subject visible (or framed as the director specified), empty space top/bottom for later UI, clean minimal background.\n7. The negative list at the end.\n\nRules:\n- Every prompt is fully standalone. NEVER write \"same as image 1\" or refer to another image — describe the complete pose and style again every time.\n- No text, UI, watermark or logo in the image unless the concept explicitly requires it.\n- Keep anatomy correct: use the anatomy brief's primary/secondary muscle locations word for word where useful.\n- Length: roughly 120–220 words per prompt. Dense, descriptive, no filler.\n- Output ONLY valid JSON matching the required schema.\n\nCORE VISUAL STYLE:\nCORE VISUAL STYLE (inject into every image/video prompt, never change):\n\nPremium realistic 3D anatomical fitness visualization. Muscular faceless white humanoid male character with a completely smooth featureless white head (no eyes, nose, mouth, hair or facial identity). Realistic muscular human anatomy, white matte anatomical body, simple black athletic shorts. Dark minimalist modern gym environment, black/charcoal background and floor, cinematic studio lighting, subtle rim lighting, realistic shadows and reflections. Premium fitness-app / medical-anatomy visualization aesthetic, clean minimal high-end composition, realistic human proportions, photorealistic 3D rendering, vertical 9:16.\n\nNEGATIVE (always append): no cartoon style, no exaggerated CGI look, no unnecessary objects, no random people, no text, no watermark, no logo, no face, no deformed limbs, no extra fingers, no floating equipment.\n\nMUSCLE HIGHLIGHT SYSTEM:\n- Primary target muscle glows with a strong but realistic color (default: vivid orange-red #FF4A1C). Secondary muscles, if any, glow a dimmer secondary color (default: soft amber #FFB347 at ~40% intensity).\n- The rest of the body stays matte white.\n- Highlight must follow real human anatomy and sit exactly on the correct muscle region. Never highlight the wrong muscle or random areas.",
+          "maxIterations": 3
+        }
+      },
+      "id": "656e2fc2-77d5-4a22-a26e-57eb428ae990",
+      "name": "Agent 4 · Image Prompt Engineer",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        1520,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1",
+          "cachedResultName": "gpt-4.1"
+        },
+        "options": {
+          "temperature": 0.4,
+          "responseFormat": "json_object"
+        }
+      },
+      "id": "f544355d-609e-4354-b28c-c5436ed30bb4",
+      "name": "OpenAI Model 4",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1460,
+        520
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "REPLACE_WITH_OPENAI_CREDENTIAL_ID",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"image_prompts\": {\n      \"type\": \"array\",\n      \"minItems\": 3,\n      \"maxItems\": 3,\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"shot_number\": {\n            \"type\": \"integer\"\n          },\n          \"prompt\": {\n            \"type\": \"string\"\n          },\n          \"end_prompt\": {\n            \"type\": \"string\"\n          }\n        },\n        \"required\": [\n          \"shot_number\",\n          \"prompt\",\n          \"end_prompt\"\n        ]\n      }\n    }\n  },\n  \"required\": [\n    \"image_prompts\"\n  ]\n}",
+        "autoFix": false
+      },
+      "id": "65567e16-2930-4109-8bcc-c6655e0c9f16",
+      "name": "Output Parser 4",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        1660,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=STORYBOARD:\n{{ JSON.stringify($('Agent 3 · Shot Director').item.json.output, null, 2) }}\n\nIMAGE PROMPTS (the stills you are animating):\n{{ JSON.stringify($json.output, null, 2) }}\n\nWrite the 3 standalone video prompts.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are AGENT 5 — AI VIDEO PROMPT ENGINEER of a fitness short-form video production team.\n\nRole: for each of the 3 shots, write one STANDALONE image-to-video prompt (Kling style with first AND last frame). The model receives the START still and the END still; your prompt describes the single smooth movement between them.\n\nEach video prompt MUST describe:\n- Starting pose (matching the still image exactly)\n- The exact movement, direction of movement and range of motion\n- Speed: ONE slow, smooth, controlled half-repetition that takes the whole clip (e.g. \"a single slow 4-second descent\"); no back-and-forth reps, no pauses, constant tempo like a medical 3D animation\n- Exercise form cues (neutral spine, elbows path, knees tracking, etc.)\n- Muscle contraction: when the highlighted muscle shortens/contracts and how the glow intensifies on the concentric and softens on the eccentric; the highlight NEVER moves to another area\n- Camera: ALWAYS \"locked static camera, no camera movement, tripod shot\" — never orbit, pan, zoom or push in\n- Character movement and equipment movement (equipment stays in the hands / on the body, obeys gravity)\n- Ending pose\n- Duration in seconds (from the storyboard)\n- The consistency clause: same faceless white humanoid, same proportions, same black shorts, same dark gym, same lighting, premium fitness-app demonstration look\n\nAppend a negative list: morphing body, limbs stretching, limbs merging, deformed limbs, extra fingers, floating equipment, changing body proportions, sudden camera jumps, unrealistic exercise mechanics, muscle highlight moving to the wrong area, character changing identity, face appearing, text, watermark, logo.\n\nRules:\n- Anatomically correct and mechanically believable motion. One clear primary motion per shot. Explicitly say that feet stay planted / body stays in place and that only the named joints move; state that body proportions and limb lengths stay constant.\n- Each prompt is standalone — never refer to another video or image.\n- 80–160 words per prompt.\n- Output ONLY valid JSON matching the required schema.",
+          "maxIterations": 3
+        }
+      },
+      "id": "befd1322-e398-46e0-a03f-6014c851d370",
+      "name": "Agent 5 · Video Prompt Engineer",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        1920,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1",
+          "cachedResultName": "gpt-4.1"
+        },
+        "options": {
+          "temperature": 0.4,
+          "responseFormat": "json_object"
+        }
+      },
+      "id": "157cd416-37c4-4082-bab1-b97481ef3e54",
+      "name": "OpenAI Model 5",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1860,
+        520
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "REPLACE_WITH_OPENAI_CREDENTIAL_ID",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"video_prompts\": {\n      \"type\": \"array\",\n      \"minItems\": 3,\n      \"maxItems\": 3,\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"shot_number\": {\n            \"type\": \"integer\"\n          },\n          \"prompt\": {\n            \"type\": \"string\"\n          },\n          \"duration_seconds\": {\n            \"type\": \"integer\"\n          }\n        },\n        \"required\": [\n          \"shot_number\",\n          \"prompt\",\n          \"duration_seconds\"\n        ]\n      }\n    }\n  },\n  \"required\": [\n    \"video_prompts\"\n  ]\n}",
+        "autoFix": false
+      },
+      "id": "8f29b4b2-9014-4b7a-acdf-b80cc7c896a3",
+      "name": "Output Parser 5",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        2060,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=SELECTED VIDEO IDEA:\n{{ JSON.stringify($('Resolve Selection').item.json.selected_idea, null, 2) }}\n\nANATOMY BRIEF:\n{{ JSON.stringify($('Agent 2 · Anatomy Expert').item.json.output, null, 2) }}\n\nSTORYBOARD (with durations):\n{{ JSON.stringify($('Agent 3 · Shot Director').item.json.output, null, 2) }}\n\nWrite the voice-over, title, caption and hashtags.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are AGENT 6 — SHORT-FORM SCRIPTWRITER of a fitness short-form video production team.\n\nRole: write the English voice-over and the final video title for a 3-shot vertical fitness video, matched to the storyboard timing.\n\nVoice-over rules:\n- Written completely in natural spoken English. Simple words. Social-media friendly, educational but engaging.\n- Directly related to the selected title and matched to the 3-shot visual sequence (what the viewer sees in shot 1, 2, 3).\n- Structure: HOOK (problem/topic) → VALUE (exercises or technique) → TAKEAWAY (key tip) → CTA only if it fits naturally.\n- Approximately 50–90 words total unless the topic needs more. Must fit the total duration of the three shots (assume ~2.5 words per second).\n- Write ONLY the words to be spoken. No stage directions, no \"show image 1 here\", no emojis, no hashtags.\n- Also return the voice-over split into three segments, one per shot, so the audio can be aligned.\n\nTitle rules:\n- Short, clickable, suitable for Instagram Reels / YouTube Shorts. No misleading clickbait.\n\nAlso provide a short social caption (1–2 lines) and 5–8 relevant hashtags.\n\nOutput ONLY valid JSON matching the required schema.",
+          "maxIterations": 3
+        }
+      },
+      "id": "7d231aee-1c15-4fb7-989b-560ed44796fd",
+      "name": "Agent 6 · Scriptwriter",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        2320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1",
+          "cachedResultName": "gpt-4.1"
+        },
+        "options": {
+          "temperature": 0.7,
+          "responseFormat": "json_object"
+        }
+      },
+      "id": "0e26a82d-7f5a-4914-803d-e5f3aa625a79",
+      "name": "OpenAI Model 6",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        2260,
+        520
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "REPLACE_WITH_OPENAI_CREDENTIAL_ID",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"video_title\": {\n      \"type\": \"string\"\n    },\n    \"voice_over\": {\n      \"type\": \"string\"\n    },\n    \"voice_over_segments\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"shot_number\": {\n            \"type\": \"integer\"\n          },\n          \"text\": {\n            \"type\": \"string\"\n          }\n        }\n      }\n    },\n    \"caption\": {\n      \"type\": \"string\"\n    },\n    \"hashtags\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      }\n    }\n  },\n  \"required\": [\n    \"video_title\",\n    \"voice_over\",\n    \"voice_over_segments\",\n    \"caption\",\n    \"hashtags\"\n  ]\n}",
+        "autoFix": false
+      },
+      "id": "6acbbcd6-ef60-4012-8953-b14ca3c38b69",
+      "name": "Output Parser 6",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        2460,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=SELECTED VIDEO IDEA:\n{{ JSON.stringify($('Resolve Selection').item.json.selected_idea, null, 2) }}\n\nANATOMY BRIEF:\n{{ JSON.stringify($('Agent 2 · Anatomy Expert').item.json.output, null, 2) }}\n\nSTORYBOARD:\n{{ JSON.stringify($('Agent 3 · Shot Director').item.json.output, null, 2) }}\n\nIMAGE PROMPTS:\n{{ JSON.stringify($('Agent 4 · Image Prompt Engineer').item.json.output, null, 2) }}\n\nVIDEO PROMPTS:\n{{ JSON.stringify($('Agent 5 · Video Prompt Engineer').item.json.output, null, 2) }}\n\nSCRIPT PACKAGE:\n{{ JSON.stringify($json.output, null, 2) }}\n\nReview, fix and return the FINAL package.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are AGENT 7 — QUALITY & CONSISTENCY REVIEWER (final editor) of a fitness short-form video production team.\n\nRole: you receive the full package (anatomy brief, storyboard, 3 image prompt pairs [start `prompt` + `end_prompt`], 3 video prompts, voice-over, title) and you return the FINAL corrected package. In the output each shot has `image_prompt` (= start frame), `end_image_prompt` (= end frame) and `video_prompt`.\n\nCheck and FIX (do not just report):\n1. Anatomy: the primary target muscle is correct for the topic and is highlighted in the correct anatomical location in every prompt; secondary muscles are clearly secondary; no wrong or random area is highlighted. Muscle heads are correctly distinguished when relevant.\n2. Mechanics: every movement is anatomically correct and realistic.\n3. Consistency: same faceless white humanoid male, smooth featureless head, white matte body, black athletic shorts, dark minimalist gym, cinematic studio + rim lighting, photorealistic 3D, 9:16 — present in ALL 3 image prompts and ALL 3 video prompts.\n4. Standalone: no prompt refers to another image/video (\"same as image 1\" etc.). Rewrite fully if found.\n5. Storytelling: the 3 shots form one continuous video with a logical progression; camera angles chosen for clarity and not forced identical.\n6. Completeness: each image prompt includes pose, exercise, camera angle, camera distance, body/arm/leg position, equipment, target muscle, highlight location, environment, lighting, composition, 3D style, 9:16 and negatives. Each video prompt includes start pose, movement, direction, speed, form, contraction, highlight behavior, camera movement, character movement, equipment movement, end pose.\n7. Voice-over: English only, 50–90 words, spoken words only, matches the shots, no instructions.\n8. Durations: shot 1 = 2–4 s, shots 2–3 = 4–6 s, integers.\n9. Frame pair: `image_prompt` and `end_image_prompt` of a shot are identical except for the moving joints; every video prompt says \"locked static camera\" and describes ONE slow half-repetition from the start frame to the end frame; no camera motion anywhere.\n10. Nothing forbidden: no text/UI/watermark/logo/face in prompts unless required by the concept.\n\nReturn the complete corrected package plus a short list of the fixes you made and an overall pass boolean. Output ONLY valid JSON matching the required schema.",
+          "maxIterations": 3
+        }
+      },
+      "id": "e967951f-14ea-492e-b79d-96c0c1227bd4",
+      "name": "Agent 7 · QA Reviewer",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        2720,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1",
+          "cachedResultName": "gpt-4.1"
+        },
+        "options": {
+          "temperature": 0.1,
+          "responseFormat": "json_object"
+        }
+      },
+      "id": "f25c0e27-7a5a-4458-8070-5d6596e1d9d8",
+      "name": "OpenAI Model 7",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        2660,
+        520
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "REPLACE_WITH_OPENAI_CREDENTIAL_ID",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"pass\": {\n      \"type\": \"boolean\"\n    },\n    \"fixes\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      }\n    },\n    \"video_title\": {\n      \"type\": \"string\"\n    },\n    \"target_muscle\": {\n      \"type\": \"string\"\n    },\n    \"shots\": {\n      \"type\": \"array\",\n      \"minItems\": 3,\n      \"maxItems\": 3,\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"shot_number\": {\n            \"type\": \"integer\"\n          },\n          \"duration_seconds\": {\n            \"type\": \"integer\"\n          },\n          \"image_prompt\": {\n            \"type\": \"string\"\n          },\n          \"end_image_prompt\": {\n            \"type\": \"string\"\n          },\n          \"video_prompt\": {\n            \"type\": \"string\"\n          }\n        },\n        \"required\": [\n          \"shot_number\",\n          \"duration_seconds\",\n          \"image_prompt\",\n          \"end_image_prompt\",\n          \"video_prompt\"\n        ]\n      }\n    },\n    \"voice_over\": {\n      \"type\": \"string\"\n    },\n    \"voice_over_segments\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"shot_number\": {\n            \"type\": \"integer\"\n          },\n          \"text\": {\n            \"type\": \"string\"\n          }\n        }\n      }\n    },\n    \"caption\": {\n      \"type\": \"string\"\n    },\n    \"hashtags\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      }\n    }\n  },\n  \"required\": [\n    \"pass\",\n    \"fixes\",\n    \"video_title\",\n    \"target_muscle\",\n    \"shots\",\n    \"voice_over\",\n    \"caption\",\n    \"hashtags\"\n  ]\n}",
+        "autoFix": false
+      },
+      "id": "a62c7873-22f4-4e0e-80ea-bebdad50aa8a",
+      "name": "Output Parser 7",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        2860,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const pkg = $json.output;\nreturn pkg.shots\n  .sort((a, b) => a.shot_number - b.shot_number)\n  .map(s => ({ json: {\n    shot_number: s.shot_number,\n    duration_seconds: 5, // Kling pro clips are 5 s; keep compose timeline in sync\n    image_prompt: s.image_prompt,\n    end_image_prompt: s.end_image_prompt || s.image_prompt,\n    video_prompt: s.video_prompt,\n    video_title: pkg.video_title,\n  }}));"
+      },
+      "id": "afb76798-0238-493a-b39f-2eefb3f47b49",
+      "name": "Build Shots",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3120,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "560e616c-51e5-43a7-8791-3dbca176efa3",
+      "name": "Loop Shots",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        3360,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🎬 Render loop\nPer shot: fal.ai image → fal.ai image-to-video → collect. Swap providers in **Config** + the two Submit nodes (docs/providers.md).",
+        "width": 900,
+        "height": 140
+      },
+      "id": "9e3fde5d-6945-41c1-962f-3d8d5b8edf4b",
+      "name": "Note 3360--60",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3360,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.IMAGE_ENDPOINT }}",
+        "options": {
+          "timeout": 120000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ ({ prompt: $json.image_prompt, image_size: 'portrait_16_9', num_images: 1, output_format: 'jpeg', safety_tolerance: '2', seed: 7 }) }}"
+      },
+      "id": "01b28ada-b435-4ac4-8dad-0e09563fb058",
+      "name": "Submit Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3600,
+        560
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_FAL_CREDENTIAL_ID",
+          "name": "fal.ai"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 8,
+        "unit": "seconds"
+      },
+      "id": "89b2f09f-bc3c-4917-88b4-6aa47f5312ff",
+      "name": "Wait Image",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3840,
+        560
+      ],
+      "webhookId": "0447b0c7-4099-4095-a664-dc45cccaf645"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Submit Image').item.json.status_url }}",
+        "options": {
+          "timeout": 120000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "f1197117-9065-47b6-9ec6-e45e56a941f8",
+      "name": "Check Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4080,
+        560
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_FAL_CREDENTIAL_ID",
+          "name": "fal.ai"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d4fe6aa3-bc55-4db0-8381-90a9453eb7cf",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "COMPLETED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "dcc39f00-94d1-4edc-9c09-a4e783a35ca0",
+      "name": "Image Done?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4320,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Submit Image').item.json.response_url }}",
+        "options": {
+          "timeout": 120000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "8b8b8f7c-45c0-4a95-88f9-74ee6e9e4303",
+      "name": "Get Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4560,
+        560
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_FAL_CREDENTIAL_ID",
+          "name": "fal.ai"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.IMAGE_ENDPOINT }}",
+        "options": {
+          "timeout": 120000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ ({ prompt: $('Loop Shots').item.json.end_image_prompt, image_size: 'portrait_16_9', num_images: 1, output_format: 'jpeg', safety_tolerance: '2', seed: 7 }) }}"
+      },
+      "id": "0c0bfa84-8f0a-4f90-baa5-ad51ff73df30",
+      "name": "Submit End Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3600,
+        820
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_FAL_CREDENTIAL_ID",
+          "name": "fal.ai"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 8,
+        "unit": "seconds"
+      },
+      "id": "7b7f2dc4-8b4f-495e-81de-46e3738f6786",
+      "name": "Wait End Image",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3840,
+        820
+      ],
+      "webhookId": "1dbb995a-2c1f-4ca3-b448-4da9ef29ec06"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Submit End Image').item.json.status_url }}",
+        "options": {
+          "timeout": 120000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "d7ac5149-1bcc-461d-a693-5bc9e6bec3dc",
+      "name": "Check End Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4080,
+        820
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_FAL_CREDENTIAL_ID",
+          "name": "fal.ai"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "6a5e7ea9-f3e6-411e-ab69-bc85b6704619",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "COMPLETED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a2189d74-0efd-4275-8f35-367a1ac091fd",
+      "name": "End Image Done?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4320,
+        820
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Submit End Image').item.json.response_url }}",
+        "options": {
+          "timeout": 120000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "a40acf69-90a5-4630-8bfe-e1c78764eb6e",
+      "name": "Get End Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4560,
+        820
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_FAL_CREDENTIAL_ID",
+          "name": "fal.ai"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.VIDEO_ENDPOINT }}",
+        "options": {
+          "timeout": 120000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ ({ prompt: $('Loop Shots').item.json.video_prompt, image_url: $('Get Image').item.json.images[0].url, tail_image_url: $json.images[0].url, duration: '5', aspect_ratio: '9:16', cfg_scale: 0.5, negative_prompt: 'morphing, limbs stretching, limbs merging, deformed limbs, extra limbs, extra fingers, camera movement, zoom, floating equipment, changing proportions, blur, distortion, low quality, face, text, watermark, logo' }) }}"
+      },
+      "id": "aa340f59-8ff0-4669-b39d-d9892db7337f",
+      "name": "Submit Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4800,
+        1080
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_FAL_CREDENTIAL_ID",
+          "name": "fal.ai"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 20,
+        "unit": "seconds"
+      },
+      "id": "d4942830-2e1a-49bf-b0ce-4dfe84aefffb",
+      "name": "Wait Video",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        5040,
+        1080
+      ],
+      "webhookId": "1cad0ac1-e33e-42ad-bfff-018da741d6c0"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Submit Video').item.json.status_url }}",
+        "options": {
+          "timeout": 120000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "a9d7609f-c561-4e37-9d4f-7314ff234df9",
+      "name": "Check Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5280,
+        1080
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_FAL_CREDENTIAL_ID",
+          "name": "fal.ai"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "816e5e0e-dcea-4493-82cd-14099d868cb7",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "COMPLETED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "506992d0-b744-4492-ac6e-0019958d0ce2",
+      "name": "Video Done?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        5520,
+        1080
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Submit Video').item.json.response_url }}",
+        "options": {
+          "timeout": 120000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "59408136-4153-4883-8c45-82de1db6f430",
+      "name": "Get Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5760,
+        1080
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_FAL_CREDENTIAL_ID",
+          "name": "fal.ai"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e2f337a1-00c7-455b-a534-23140d4ecbcb",
+              "name": "shot_number",
+              "type": "number",
+              "value": "={{ $('Loop Shots').item.json.shot_number }}"
+            },
+            {
+              "id": "6d580bde-42c8-4aa0-b497-d4b72db99a31",
+              "name": "duration_seconds",
+              "type": "number",
+              "value": "={{ $('Loop Shots').item.json.duration_seconds }}"
+            },
+            {
+              "id": "3db901ae-c189-4b86-a74f-c829d5c60ca8",
+              "name": "image_prompt",
+              "type": "string",
+              "value": "={{ $('Loop Shots').item.json.image_prompt }}"
+            },
+            {
+              "id": "01e62ac0-a0e9-4ab9-ae05-1e31f36a35e3",
+              "name": "video_prompt",
+              "type": "string",
+              "value": "={{ $('Loop Shots').item.json.video_prompt }}"
+            },
+            {
+              "id": "6c7da851-d051-4d40-b2f4-9589a8522405",
+              "name": "end_image_prompt",
+              "type": "string",
+              "value": "={{ $('Loop Shots').item.json.end_image_prompt }}"
+            },
+            {
+              "id": "5307ca54-5a9a-482a-8f90-db42f9c18804",
+              "name": "image_url",
+              "type": "string",
+              "value": "={{ $('Get Image').item.json.images[0].url }}"
+            },
+            {
+              "id": "73536c09-98f1-455e-8d59-ff8fbe464051",
+              "name": "end_image_url",
+              "type": "string",
+              "value": "={{ $('Get End Image').item.json.images[0].url }}"
+            },
+            {
+              "id": "fbe4312a-8c9a-4990-ba63-78210e49b851",
+              "name": "video_url",
+              "type": "string",
+              "value": "={{ $json.video.url }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8791dfc9-5e75-4ba7-a9e4-faf4c4318b33",
+      "name": "Collect Shot",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        6000,
+        1080
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const shots = $input.all().map(i => i.json).sort((a, b) => a.shot_number - b.shot_number);\nreturn [{ json: { shots } }];"
+      },
+      "id": "c0deb4f6-e52f-46de-bed4-2012db23ef87",
+      "name": "Collect All Shots",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3600,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ☁️ Cloud assembly (no ffmpeg on the server)\nVoice → uploaded to fal storage → **fal-ai/ffmpeg-api/compose** stitches clips + voice → `final_video_url`.",
+        "width": 900,
+        "height": 120
+      },
+      "id": "239454a3-4e1e-4bf7-8377-550ec83559ee",
+      "name": "Note 3600-60",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3600,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.elevenlabs.io/v1/text-to-speech/{{ $('Config').first().json.TTS_VOICE_ID }}?output_format=mp3_44100_128",
+        "options": {
+          "timeout": 120000,
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "data"
+            }
+          }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ ({ text: $('Agent 7 · QA Reviewer').first().json.output.voice_over, model_id: $('Config').first().json.TTS_MODEL, voice_settings: { stability: 0.5, similarity_boost: 0.8, style: 0.2, use_speaker_boost: true } }) }}"
+      },
+      "id": "9fb16f48-d9fb-4194-a6e2-ee573225843a",
+      "name": "Voice-over TTS (ElevenLabs)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3840,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_ELEVENLABS_CREDENTIAL_ID",
+          "name": "ElevenLabs"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.FAL_UPLOAD_INITIATE }}",
+        "options": {
+          "timeout": 120000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ ({ content_type: 'audio/mpeg', file_name: 'voice.mp3' }) }}"
+      },
+      "id": "0de54e52-b8c3-49af-9e08-b9348dc0b476",
+      "name": "Voice · Init Upload (fal)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4080,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_FAL_CREDENTIAL_ID",
+          "name": "fal.ai"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const init = $('Voice · Init Upload (fal)').first().json;\nconst tts = $('Voice-over TTS (ElevenLabs)').first();\nreturn [{ json: init, binary: { data: tts.binary.data } }];"
+      },
+      "id": "fbbf65a8-68e3-4a73-b49c-51c07f019082",
+      "name": "Attach Voice Binary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $json.upload_url }}",
+        "options": {
+          "timeout": 120000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "audio/mpeg"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data"
+      },
+      "id": "c7026e04-501e-466b-948c-2317681c011f",
+      "name": "Voice · Upload (PUT)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.COMPOSE_ENDPOINT }}",
+        "options": {
+          "timeout": 120000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => {\n  const shots = $('Collect All Shots').first().json.shots;\n  let t = 0;\n  const video = shots.map(s => { const k = { url: s.video_url, timestamp: t, duration: s.duration_seconds }; t += s.duration_seconds; return k; });\n  const voice_url = $('Voice · Init Upload (fal)').first().json.file_url;\n  return { tracks: [\n    { id: 'video', type: 'video', keyframes: video },\n    { id: 'voice', type: 'audio', keyframes: [{ url: voice_url, timestamp: 0, duration: t }] }\n  ] };\n})() }}"
+      },
+      "id": "62876cbd-0b5a-4d83-ac94-cc166ff0dd6c",
+      "name": "Submit Compose",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4800,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_FAL_CREDENTIAL_ID",
+          "name": "fal.ai"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 15,
+        "unit": "seconds"
+      },
+      "id": "3ea00188-2916-44d0-ace0-d45551cbcca2",
+      "name": "Wait Compose",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        5040,
+        300
+      ],
+      "webhookId": "4a95a8c9-c503-4c01-84ee-4d74afbd78fc"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Submit Compose').first().json.status_url }}",
+        "options": {
+          "timeout": 120000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "fb928d51-e217-4afc-9990-7d66d1149e9f",
+      "name": "Check Compose",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5280,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_FAL_CREDENTIAL_ID",
+          "name": "fal.ai"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "750524f8-251a-4024-a8bb-aa24144d622d",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "COMPLETED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "de89424e-b918-4381-95ab-62417dd728ee",
+      "name": "Compose Done?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        5520,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Submit Compose').first().json.response_url }}",
+        "options": {
+          "timeout": 120000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "2fbcc6e8-d460-4332-97e4-8145d4bb14ff",
+      "name": "Get Compose",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5760,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_FAL_CREDENTIAL_ID",
+          "name": "fal.ai"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b023c8a5-5f45-45f2-b3d2-a646fa04b058",
+              "name": "video_title",
+              "type": "string",
+              "value": "={{ $('Agent 7 · QA Reviewer').first().json.output.video_title }}"
+            },
+            {
+              "id": "5f028ae1-8753-4170-b0d0-a43352ef3a62",
+              "name": "target_muscle",
+              "type": "string",
+              "value": "={{ $('Agent 7 · QA Reviewer').first().json.output.target_muscle }}"
+            },
+            {
+              "id": "2a36a267-0fa7-4990-b779-50f45db3df25",
+              "name": "final_video_url",
+              "type": "string",
+              "value": "={{ $json.video_url }}"
+            },
+            {
+              "id": "0855c314-bf5e-4c6d-9deb-c65f7455800b",
+              "name": "thumbnail_url",
+              "type": "string",
+              "value": "={{ $json.thumbnail_url || '' }}"
+            },
+            {
+              "id": "f52e8b95-8577-43f5-b0d8-5458fbe5d95a",
+              "name": "voice_url",
+              "type": "string",
+              "value": "={{ $('Voice · Init Upload (fal)').first().json.file_url }}"
+            },
+            {
+              "id": "c75f7bf1-c114-483e-97ab-80c49915779c",
+              "name": "shots",
+              "type": "array",
+              "value": "={{ $('Collect All Shots').first().json.shots }}"
+            },
+            {
+              "id": "3cc8a44a-4f9a-4735-8847-675f683e57ac",
+              "name": "voice_over",
+              "type": "string",
+              "value": "={{ $('Agent 7 · QA Reviewer').first().json.output.voice_over }}"
+            },
+            {
+              "id": "b5c5c2ed-4752-4337-bcc6-679efcd0e236",
+              "name": "caption",
+              "type": "string",
+              "value": "={{ $('Agent 7 · QA Reviewer').first().json.output.caption }}"
+            },
+            {
+              "id": "d5ca8c8d-5e01-4e6d-af8d-2466ed92f8ac",
+              "name": "hashtags",
+              "type": "array",
+              "value": "={{ $('Agent 7 · QA Reviewer').first().json.output.hashtags }}"
+            },
+            {
+              "id": "b1420a3c-f5c4-458a-acec-cd04afb3bc09",
+              "name": "qa_fixes",
+              "type": "array",
+              "value": "={{ $('Agent 7 · QA Reviewer').first().json.output.fixes }}"
+            },
+            {
+              "id": "e33239f0-b558-4570-8026-08da337b1c53",
+              "name": "full_package",
+              "type": "object",
+              "value": "={{ $('Agent 7 · QA Reviewer').first().json.output }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cc6bb9df-a590-4128-a47a-5bb16109f3f7",
+      "name": "Final Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        6000,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "When called by another workflow": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Resolve Selection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model 2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent 2 · Anatomy Expert",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Output Parser 2": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Agent 2 · Anatomy Expert",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Selection": {
+      "main": [
+        [
+          {
+            "node": "Agent 2 · Anatomy Expert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model 3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent 3 · Shot Director",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Output Parser 3": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Agent 3 · Shot Director",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent 2 · Anatomy Expert": {
+      "main": [
+        [
+          {
+            "node": "Agent 3 · Shot Director",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model 4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent 4 · Image Prompt Engineer",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Output Parser 4": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Agent 4 · Image Prompt Engineer",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent 3 · Shot Director": {
+      "main": [
+        [
+          {
+            "node": "Agent 4 · Image Prompt Engineer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model 5": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent 5 · Video Prompt Engineer",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Output Parser 5": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Agent 5 · Video Prompt Engineer",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent 4 · Image Prompt Engineer": {
+      "main": [
+        [
+          {
+            "node": "Agent 5 · Video Prompt Engineer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model 6": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent 6 · Scriptwriter",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Output Parser 6": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Agent 6 · Scriptwriter",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent 5 · Video Prompt Engineer": {
+      "main": [
+        [
+          {
+            "node": "Agent 6 · Scriptwriter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model 7": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent 7 · QA Reviewer",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Output Parser 7": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Agent 7 · QA Reviewer",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent 6 · Scriptwriter": {
+      "main": [
+        [
+          {
+            "node": "Agent 7 · QA Reviewer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent 7 · QA Reviewer": {
+      "main": [
+        [
+          {
+            "node": "Build Shots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Shots": {
+      "main": [
+        [
+          {
+            "node": "Loop Shots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Shots": {
+      "main": [
+        [
+          {
+            "node": "Collect All Shots",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Submit Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Submit Image": {
+      "main": [
+        [
+          {
+            "node": "Wait Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Image": {
+      "main": [
+        [
+          {
+            "node": "Check Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Image": {
+      "main": [
+        [
+          {
+            "node": "Image Done?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image Done?": {
+      "main": [
+        [
+          {
+            "node": "Get Image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Image": {
+      "main": [
+        [
+          {
+            "node": "Submit End Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Submit End Image": {
+      "main": [
+        [
+          {
+            "node": "Wait End Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait End Image": {
+      "main": [
+        [
+          {
+            "node": "Check End Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check End Image": {
+      "main": [
+        [
+          {
+            "node": "End Image Done?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "End Image Done?": {
+      "main": [
+        [
+          {
+            "node": "Get End Image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait End Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get End Image": {
+      "main": [
+        [
+          {
+            "node": "Submit Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Submit Video": {
+      "main": [
+        [
+          {
+            "node": "Wait Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Video": {
+      "main": [
+        [
+          {
+            "node": "Check Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Video": {
+      "main": [
+        [
+          {
+            "node": "Video Done?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Video Done?": {
+      "main": [
+        [
+          {
+            "node": "Get Video",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Video": {
+      "main": [
+        [
+          {
+            "node": "Collect Shot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Shot": {
+      "main": [
+        [
+          {
+            "node": "Loop Shots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect All Shots": {
+      "main": [
+        [
+          {
+            "node": "Voice-over TTS (ElevenLabs)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Voice-over TTS (ElevenLabs)": {
+      "main": [
+        [
+          {
+            "node": "Voice · Init Upload (fal)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Voice · Init Upload (fal)": {
+      "main": [
+        [
+          {
+            "node": "Attach Voice Binary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach Voice Binary": {
+      "main": [
+        [
+          {
+            "node": "Voice · Upload (PUT)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Voice · Upload (PUT)": {
+      "main": [
+        [
+          {
+            "node": "Submit Compose",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Submit Compose": {
+      "main": [
+        [
+          {
+            "node": "Wait Compose",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Compose": {
+      "main": [
+        [
+          {
+            "node": "Check Compose",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Compose": {
+      "main": [
+        [
+          {
+            "node": "Compose Done?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compose Done?": {
+      "main": [
+        [
+          {
+            "node": "Get Compose",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait Compose",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Compose": {
+      "main": [
+        [
+          {
+            "node": "Final Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
